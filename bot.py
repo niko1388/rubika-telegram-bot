@@ -20,10 +20,18 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 # ==================== توابع کمکی ====================
 def check_channel_membership(user_id: int, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """بررسی عضویت کاربر در کانال (نسخه تست برای GitHub)"""
+    # اگر روی GitHub Actions اجرا می‌شود، برای تست اجازه بده
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        print(f"⚠️ حالت تست: کاربر {user_id} به عنوان عضو شناخته شد")
+        return True
+    
+    # نسخه اصلی
     try:
         member = context.bot.get_chat_member(chat_id=ADMIN_CHANNEL, user_id=user_id)
         return member.status in ['member', 'administrator', 'creator']
-    except:
+    except Exception as e:
+        print(f"خطا در بررسی عضویت: {e}")
         return False
 
 def generate_referral_link(user_id: int) -> str:
@@ -62,19 +70,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "phone": "",
             "username": ""
         }
-    
-    # بررسی عضویت
-    if not check_channel_membership(user_id, context):
-        keyboard = [
-            [InlineKeyboardButton("✅ عضویت در کانال", url=f"https://t.me/hacking_filltering")],
-            [InlineKeyboardButton("🔍 بررسی عضویت", callback_data="check_membership")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(
-            f"سلام {user.first_name}!\nلطفاً در کانال زیر عضو شوید:\n{ADMIN_CHANNEL}",
-            reply_markup=reply_markup
-        )
-        return
     
     # نمایش منوی اصلی
     await show_main_menu(update, context)
@@ -271,19 +266,8 @@ def main():
     application.add_handler(CallbackQueryHandler(my_referral_callback, pattern="^my_referral$"))
     application.add_handler(CallbackQueryHandler(main_menu_callback, pattern="^main_menu$"))
     
-    # روی Render از وب‌هوک استفاده می‌کنیم
-    port = int(os.environ.get("PORT", 8443))
-    webhook_url = os.environ.get("WEBHOOK_URL", "")
-    
-    if webhook_url:
-        application.run_webhook(
-            listen="0.0.0.0",
-            port=port,
-            url_path=TOKEN,
-            webhook_url=webhook_url + TOKEN
-        )
-    else:
-        application.run_polling()
+    print("🤖 ربات در حال شروع... (GitHub Actions)")
+    application.run_polling()
 
 if __name__ == "__main__":
     main()
